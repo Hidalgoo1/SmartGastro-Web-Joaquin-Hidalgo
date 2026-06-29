@@ -121,6 +121,97 @@ def obtener_clima():
         app.logger.error(f"Fallo en la comunicación con la API externa: {e}")
         return jsonify({"status": "error", "mensaje": "No se pudo obtener el reporte climático actual."}), 502
 
+    # POST: Crear Producto
+    @app.post("/api/productos")
+    @login_required
+    def crear_producto():
+        datos = request.get_json()
+        if not datos or 'nombre' not in datos or 'precio' not in datos:
+            return jsonify({"status": "error", "mensaje": "Faltan datos obligatorios."}), 400
+
+        try:
+            nuevo_producto = Producto(
+                nombre=datos['nombre'],
+                precio=float(datos['precio']),
+                stock=int(datos.get('stock', 0))
+            )
+            db.session.add(nuevo_producto)
+            db.session.commit()
+
+            return jsonify({
+                "status": "success",
+                "mensaje": f"Producto '{nuevo_producto.nombre}' creado con éxito.",
+                "id": nuevo_producto.id
+            }), 201
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"status": "error", "mensaje": f"Falla transaccional: {str(e)}"}), 500
+
+    # GET: Leer catálogo completo
+    @app.get("/api/productos")
+    @login_required
+    def obtener_productos():
+        lista_productos = Producto.query.all()
+        resultado = []
+
+        for p in lista_productos:
+            resultado.append({
+                "id": p.id,
+                "nombre": p.nombre,
+                "precio": p.precio,
+                "stock": p.stock
+            })
+        return jsonify(resultado), 200
+
+    # PATCH: Actualizar Stock parcial
+    @app.patch("/api/productos/<int:id>")
+    @login_required
+    def actualizar_stock(id):
+        datos = request.get_json()
+        if not datos or 'cantidad' not in datos or 'operacion' not in datos:
+            return jsonify({"status": "error", "mensaje": "Faltan parámetros de operación."}), 400
+
+        # Búsqueda selectiva por PK
+        producto = Producto.query.get(id)
+        if not producto:
+            return jsonify({"status": "error", "mensaje": "Producto no encontrado."}), 404
+
+        try:
+            cantidad = int(datos['cantidad'])
+            if datos['operacion'] == 'vender':
+                producto.descontar_stock(cantidad)
+            elif datos['operacion'] == 'reponer':
+                producto.aumentar_stock(cantidad)
+            else:
+                return jsonify({"status": "error", "mensaje": "Operación inválida."}), 400
+
+            db.session.commit()
+            return jsonify({
+                "status": "success",
+                "mensaje": "Inventario actualizado correctamente.",
+                "nuevo_stock": producto.stock
+            }), 200
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"status": "error", "mensaje": str(e)}), 400
+
+    # DELETE: Eliminar Producto
+    @app.delete("/api/productos/<int:id>")
+    @login_required
+    def eliminar_producto(id):
+        producto = Producto.query.get(id)
+        if not producto:
+            return jsonify({"status": "error", "mensaje": "Producto no encontrado."}), 404
+
+        try:
+            db.session.delete(producto)
+            db.session.commit()
+            return jsonify({"status": "success", "mensaje": f"Producto eliminado correctamente."}), 200
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"status": "error", "mensaje": f"Falla al eliminar: {str(e)}"}), 500
+
+
 
 if __name__ == "__main__":
     debug_mode = os.getenv('FLASK_DEBUG', 'True') == 'True'
