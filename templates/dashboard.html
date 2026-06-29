@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartGastro - Panel de Gestión</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f9; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { width: 100%; max-width: 800px; display: flex; flex-direction: column; gap: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .alerta-lluvia { background-color: #ffe6e6; border-left: 5px solid #ff4d4d; color: #cc0000; padding: 15px; border-radius: 4px; font-weight: bold; }
+        .buen-clima { background-color: #e6f7ff; border-left: 5px solid #1890ff; color: #0050b3; padding: 15px; border-radius: 4px; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #333; color: white; }
+        .stock-critico { color: #ff4d4d; font-weight: bold; }
+        .form-group { display: flex; gap: 10px; margin-bottom: 10px; }
+        input, button { padding: 10px; border-radius: 4px; border: 1px solid #ddd; }
+        button { background-color: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background-color: #218838; }
+        .btn-logout { background-color: #dc3545; float: right; }
+        .btn-logout:hover { background-color: #c82333; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <form action="/auth/logout" method="POST" style="display: inline;">
+            <button type="submit" class="btn-logout">Cerrar Sesión</button>
+        </form>
+        <h2>🚚 SmartGastro Dashboard</h2>
+        <p>Bienvenido al sistema de control centralizado.</p>
+    </div>
+
+    <!-- Bloque Alerta de clima -->
+    <div class="{{ 'alerta-lluvia' if clima.alerta_lluvia else 'buen-clima' }}">
+        ☀️ Clima Actual: {{ clima.temperatura }}°C | {{ clima.recomendacion }}
+    </div>
+
+    <!-- Formulario de Alta de Producto -->
+    <div class="card">
+        <h3>🛒 Registrar Nuevo Producto</h3>
+        <div class="form-group">
+            <input type="text" id="nombre" placeholder="Nombre del plato/bebida">
+            <input type="number" id="precio" placeholder="Precio ($)">
+            <input type="number" id="stock" placeholder="Stock Inicial">
+            <button onclick="registrarProducto()">Guardar Producto</button>
+        </div>
+        <p id="mensaje-feedback" style="font-weight: bold;"></p>
+    </div>
+
+    <!-- Tabla de Inventario Dinámica -->
+    <div class="card">
+        <h3>📦 Estado de Inventario Actual</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Producto</th>
+                    <th>Precio</th>
+                    <th>Stock Disponible</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tabla-productos">
+                {% for p in productos %}
+                <tr id="fila-{{ p.id }}">
+                    <td>{{ p.id }}</td>
+                    <td>{{ p.nombre }}</td>
+                    <td>${{ p.precio }}</td>
+                    <!-- Stock crítico en rojo si es menor a 5 -->
+                    <td class="{{ 'stock-critico' if p.stock < 5 else '' }}" id="stock-{{ p.id }}">
+                        {{ p.stock }}
+                    </td>
+                    <td>
+                        <button style="background-color: #007bff;" onclick="registrarVenta({{ p.id }})">Simular Venta (-1)</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // Función Asíncrona con fetch() para Alta de Producto (Pauta 2.4)
+    async function registrarProducto() {
+        const nombre = document.getElementById('nombre').value;
+        const precio = document.getElementById('precio').value;
+        const stock = document.getElementById('stock').value;
+        const feedback = document.getElementById('mensaje-feedback');
+
+        if (!nombre || !precio || !stock) {
+            feedback.style.color = "red";
+            feedback.innerText = "Complete todos los campos.";
+            return;
+        }
+
+        try {
+            const respuesta = await fetch('/api/productos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nombre, precio, stock })
+            });
+
+            const resultado = await respuesta.json();
+
+            if (respuesta.status === 201) {
+                feedback.style.color = "green";
+                feedback.innerText = resultado.mensaje;
+                setTimeout(() => location.reload(), 1500); // Recarga para ver reflejado el cambio
+            } else {
+                feedback.style.color = "red";
+                feedback.innerText = resultado.mensaje;
+            }
+        } catch (error) {
+            console.error("Error en petición:", error);
+        }
+    }
+
+    // Función Asíncrona para Simulación de Venta por API
+    async function registrarVenta(id) {
+        try {
+            const respuesta = await fetch(`/api/productos/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cantidad: 1, operacion: 'vender' })
+            });
+
+            const resultado = await respuesta.json();
+            const celdaStock = document.getElementById(`stock-${id}`);
+
+            if (respuesta.status === 200) {
+                celdaStock.innerText = resultado.nuevo_stock;
+                if (resultado.nuevo_stock < 5) {
+                    celdaStock.classList.add('stock-critico');
+                }
+            } else {
+                alert(resultado.mensaje); // Error de stock que devuelve el backend
+            }
+        } catch (error) {
+            console.error("Error al registrar venta:", error);
+        }
+    }
+</script>
+
+</body>
+</html>

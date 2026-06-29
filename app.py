@@ -1,5 +1,6 @@
 import os
 from flask import Flask, jsonify, request, session
+from flask import render_template, redirect, url_for
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
@@ -120,6 +121,40 @@ def obtener_clima():
     except RequestException as e:
         app.logger.error(f"Fallo en la comunicación con la API externa: {e}")
         return jsonify({"status": "error", "mensaje": "No se pudo obtener el reporte climático actual."}), 502
+
+    @app.get("/dashboard")
+    def mostrar_dashboard():
+        if 'usuario_id' not in session:
+            return redirect(url_for('home'))
+
+        productos_db = Producto.query.all()
+
+        try:
+            url_clima = "https://api.open-meteo.com/v1/forecast?latitude=-34.61&longitude=-58.38&current_weather=true"
+            resp_clima = requests.get(url_clima, timeout=5).json()[cite: 12]
+            weather_code = resp_clima['current_weather']['weathercode']
+            temperatura = resp_clima['current_weather']['temperature']
+            llueve = weather_code in [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82]
+
+            info_clima = {
+                "temperatura": temperatura,
+                "alerta_lluvia": llueve,
+                "recomendacion": "ALERTA: Pronóstico de lluvia. Reducir producción de stock." if llueve else "Buen clima. Operar con stock estándar."[
+                    cite: 16]
+            }
+        except Exception:
+            info_clima = {
+                "temperatura": "N/A",
+                "alerta_lluvia": False,
+                "recomendacion": "Servicio meteorológico temporalmente no disponible."
+            }
+
+        return render_template('dashboard.html', productos=productos_db, clima=info_clima)
+
+    @app.post("/auth/logout")
+    def b_logout():
+        session.pop('usuario_id', None)
+        return redirect(url_for('home'))
 
     # POST: Crear Producto
     @app.post("/api/productos")
