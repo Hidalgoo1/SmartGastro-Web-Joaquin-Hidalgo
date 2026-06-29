@@ -1,0 +1,11 @@
+.venv/
+venv/
+ENV/
+
+.env
+
+instance/
+smartgastro.db
+
+__pycache__/
+*.pyc
