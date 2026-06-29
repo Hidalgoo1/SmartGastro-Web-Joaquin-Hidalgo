@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartGastro - Acceso</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 20px; }
+        .form-section { display: flex; flex-direction: column; gap: 10px; }
+        input, button { padding: 10px; border-radius: 4px; border: 1px solid #ddd; font-size: 14px; }
+        button { background-color: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background-color: #0056b3; }
+        .btn-register { background-color: #6c757d; }
+        .btn-register:hover { background-color: #5a6268; }
+        h3 { margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 5px; color: #333; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>🚚 SmartGastro Acceso</h2>
+
+    <!-- Formulario de Login directo al Backend -->
+    <div class="form-section">
+        <h3>Iniciar Sesión</h3>
+        <form action="/auth/web/login" method="POST" class="form-section">
+            <input type="text" name="username" placeholder="Usuario" required>
+            <input type="password" name="password" placeholder="Contraseña" required>
+            <button type="submit">Ingresar al Dashboard</button>
+        </form>
+    </div>
+
+    <!-- Formulario de Registro directo al Backend -->
+    <div class="form-section">
+        <h3>Registrar Nuevo Usuario</h3>
+        <form action="/auth/web/register" method="POST" class="form-section">
+            <input type="text" name="username" placeholder="Nuevo Usuario" required>
+            <input type="password" name="password" placeholder="Contraseña" required>
+            <button type="submit" class="btn-register">Registrarse</button>
+        </form>
+    </div>
+</div>
+
+</body>
+</html>

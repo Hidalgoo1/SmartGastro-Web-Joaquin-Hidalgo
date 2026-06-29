@@ -30,12 +30,45 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+
 @app.get("/")
 def home():
-    return jsonify({
-        "status": "success",
-        "mensaje": "Servidor SmartGastro Web operacional."
-    }), 200
+    return render_template('index.html')
+
+
+@app.post("/auth/web/register")
+def web_registrar():
+    username = request.form.get('username')
+    password = request.form.get('password')
+
+    if not username or not password:
+        return "Datos incompletos", 400
+
+    try:
+        password_encriptada = generate_password_hash(password)
+        nuevo_usuario = Usuario(username=username, password_hash=password_encriptada)
+        db.session.add(nuevo_usuario)
+        db.session.commit()
+        session['usuario_id'] = nuevo_usuario.id
+        session.modified = True
+        return redirect(url_for('mostrar_dashboard'))
+    except Exception:
+        db.session.rollback()
+        return "El usuario ya existe.", 400
+
+
+@app.post("/auth/web/login")
+def web_login():
+    username = request.form.get('username')
+    password = request.form.get('password')
+
+    usuario = Usuario.query.filter_by(username=username).first()
+    if usuario and check_password_hash(usuario.password_hash, password):
+        session['usuario_id'] = usuario.id
+        session.modified = True
+        return redirect(url_for('mostrar_dashboard'))
+
+    return "Usuario o contraseña incorrectos. Volvé a intentar.", 401
 
 @app.post("/api/auth/register")
 def registrar_usuario():
